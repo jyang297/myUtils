@@ -48,3 +48,18 @@ class X_Train(data.Dataset):
 
     def __len__(self):
         return self.nScenes
+    
+def make_2D_dataset_X_Train(dir):
+    framesPath = []
+    # Find and loop over all the clips in root `dir`.
+    for scene_path in sorted(glob.glob(os.path.join(dir, '*', ''))):
+        sample_paths = sorted(glob.glob(os.path.join(scene_path, '*', '')))
+        for sample_path in sample_paths:
+            frame65_list = []
+            for frame in sorted(glob.glob(os.path.join(sample_path, '*.png'))):
+                frame65_list.append(frame)
+            framesPath.append(frame65_list)
+
+    print("The number of total training samples : {} which has 65 frames each.".format(
+        len(framesPath)))  ## 4408 folders which have 65 frames each
+    return framesPath
