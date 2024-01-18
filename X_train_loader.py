@@ -63,3 +63,60 @@ def make_2D_dataset_X_Train(dir):
     print("The number of total training samples : {} which has 65 frames each.".format(
         len(framesPath)))  ## 4408 folders which have 65 frames each
     return framesPath
+
+
+def frames_loader_train(args, candidate_frames, frameRange):
+    frames = []
+    for frameIndex in frameRange:
+        frame = cv2.imread(candidate_frames[frameIndex])
+        frames.append(frame)
+    (ih, iw, c) = frame.shape
+    frames = np.stack(frames, axis=0)  # (T, H, W, 3)
+    if args.need_patch:  ## random crop
+        ps = args.patch_size
+        ix = random.randrange(0, iw - ps + 1)
+        iy = random.randrange(0, ih - ps + 1)
+        frames = frames[:, iy:iy + ps, ix:ix + ps, :]
+
+    if random.random() < 0.5:  # random horizontal flip
+        frames = frames[:, :, ::-1, :]
+
+    # No vertical flip
+
+    rot = random.randint(0, 3)  # random rotate
+    frames = np.rot90(frames, rot, (1, 2))
+
+    """ np2Tensor [-1,1] normalized """
+    frames = RGBframes_np2Tensor(frames, args.img_ch)
+
+    return frames
+
+
+def crop(self, img0, gt, img1, h, w):
+    # input  H, W, C
+    ih, iw, _ = img0.shape
+    x = np.random.randint(0, ih - h + 1)
+    y = np.random.randint(0, iw - w + 1)
+    img0 = img0[x:x+h, y:y+w, :]
+    img1 = img1[x:x+h, y:y+w, :]
+    gt = gt[x:x+h, y:y+w, :]
+    return img0, gt, img1
+
+def RGBframes_np2Tensor(imgIn, channel=3):
+    ## input : T, H, W, C
+    if channel == 1:
+        # rgb --> Y (gray)
+        imgIn = np.sum(imgIn * np.reshape([65.481, 128.553, 24.966], [1, 1, 1, 3]) / 255.0, axis=3,
+                       keepdims=True) + 16.0
+
+    # to Tensor
+    ts = (3, 0, 1, 2)  ############# dimension order should be [C, T, H, W]
+    imgIn = torch.Tensor(imgIn.transpose(ts).astype(float)).mul_(1.0)
+
+    # normalization [-1,1]
+    # imgIn = (imgIn / 255.0 - 0.5) * 2
+
+    # normalization [0,1]
+    imgIn = (imgIn / 255.0)
+    
+    return imgIn
