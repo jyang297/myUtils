@@ -15,10 +15,10 @@ class VimeoDataset(Dataset):
         self.dataset_name = dataset_name        
         self.h = 256
         self.w = 448
-        self.data_root = '/home/jyzhao/Code/Datasets/vimeo_triplet'
+        self.data_root = '/home/jyzhao/Code/Datasets/vimeo_septuplet'
         self.image_root = os.path.join(self.data_root, 'sequences')
-        train_fn = os.path.join(self.data_root, 'tri_trainlist.txt')
-        test_fn = os.path.join(self.data_root, 'tri_testlist.txt')
+        train_fn = os.path.join(self.data_root, 'sep_trainlist.txt')
+        test_fn = os.path.join(self.data_root, 'sep_testlist.txt')
         with open(train_fn, 'r') as f:
             self.trainlist = f.read().splitlines()
         with open(test_fn, 'r') as f:
@@ -26,7 +26,7 @@ class VimeoDataset(Dataset):
         self.load_data()
 
     def __len__(self):
-        return len(self.meta_data)
+        return len(self.meta_data)//3000
 
     def load_data(self):
         cnt = int(len(self.trainlist) * 0.95)
@@ -62,11 +62,7 @@ class VimeoDataset(Dataset):
         for i in range(7):
             img = cv2.imread(imgpaths[i])
             imgs.append(img)
-        '''
-        img0 = cv2.imread(imgpaths[ind[0]])
-        gt = cv2.imread(imgpaths[ind[1]])
-        img1 = cv2.imread(imgpaths[ind[2]])        
-        '''
+
         imgs = self.crop(imgs, 224, 224)
         # timestep = (ind[1] - ind[0]) * 1.0 / (ind[2] - ind[0] + 1e-6)
         return  imgs
@@ -97,9 +93,10 @@ class VimeoDataset(Dataset):
                 for i in range(7):
                     imgs[i] = imgs[i][:, ::-1]
             if random.uniform(0, 1) < 0.5:
-                tmp = img1
-                img1 = img0
-                img0 = tmp
+                temp = imgs.copy()
+                for i in range(7):
+                    imgs[i] = temp[6-i]
+
 
             # random rotation
             p = random.uniform(0, 1)
@@ -113,7 +110,7 @@ class VimeoDataset(Dataset):
                 for i in range(7):
                     imgs[i] = cv2.rotate(imgs[i], cv2.ROTATE_90_COUNTERCLOCKWISE)
         # img: HWC == permute ==> CHW == concat ==> (C*N)HW  
-        tensor_list = [torch.from_numpy(np_img).permute(2,0,1) for np_img in imgs]
+        tensor_list = [torch.from_numpy(np_img.copy()).permute(2,0,1) for np_img in imgs]
         stacked_imgs = torch.stack(tensor_list, dim=0)
         timestep = torch.tensor(0.5).reshape(1, 1, 1)
         return stacked_imgs, timestep
