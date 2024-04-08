@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import math
 
-class SELayer(nn.Moudle):
+class SELayer(nn.Module):
     """
-    Squeeze and Exciation
+    Squeeze and Excitation
     Only channel attention.
     """
     def __init__(self, channel, reduction=16, pool_mode='avg'):
@@ -22,10 +22,25 @@ class SELayer(nn.Moudle):
         )
     
     def forward(self, x):
-        b, c, h, w = x.size()
-        y = self.pooling(x).view(b,c)
-        y = self.full_connect(y).view(b,c,1,1)
-        return x * y.expand_as(x)
+        b, c, _, _ = x.size()
+        y = self.pooling(x).view(b, c)
+        y = self.full_connect(y).view(b, c, 1, 1)
+        return x * y
+
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super().__init__()
+        padding = (kernel_size - 1) // 2
+        self.conv1 = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        out = torch.cat([avg_out, max_out], dim=1)
+        out = self.conv1(out)
+        return self.sigmoid(out)
+
 
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio = 16, *args, **kwargs) -> None:
@@ -51,20 +66,7 @@ class ChannelAttention(nn.Module):
         out = self.sigmoid(out)
 
         return out
-    
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.conv1 = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=3, bias=False)
-        self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _  = torch.max(x, dim=1, keepdim=True)
-        out = torch.cat([avg_out, max_out], dim=1)
-        out = self.sigmoid(self.conv1(out))
-
-        return out
 
 class CBAM(nn.Module):
     """
