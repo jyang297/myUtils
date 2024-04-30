@@ -1,0 +1,19 @@
+# Config for my custom model.
+
+# Paths
+path:
+# frame path
+  frame_path: 'frames/'
+  # pretrained model
+  pretrained_model_path: 'ori_train_log '
+  
+  # Output images path
+  output_images_path: 'Outputs'
+
+  # Save validate log
+  validate_log_path: 'valid'
+
+  # Save train log
+  train_log_path: 'train'
+
+# 
