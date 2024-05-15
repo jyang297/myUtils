@@ -96,3 +96,46 @@ class ResNetLayer(nn.Module):
 
         return x
 
+class ScaledResNet(nn.Module):
+    from typing import Type, Callable
+    """
+    A Residual Block class for neural networks that includes optional batch normalization and
+    activation function, and uses a residual scaling factor. This block is typically used
+    in architectures like ResNets.
+
+    Parameters:
+        conv_layer (Type[nn.Module]): The convolutional layer class to use, e.g., nn.Conv2d.
+        num_features (int): Number of input and output feature maps.
+        kernel_size (int): Size of the convolution kernel.
+        bias (bool, optional): Whether to include bias in convolution layers. Defaults to True.
+        batch_norm (bool, optional): Whether to include batch normalization. Defaults to False.
+        activation (Callable[[bool], nn.Module], optional): Activation function to use. Defaults to ReLU.
+        res_scale (float, optional): Scaling factor for the residual connection. Defaults to 1.
+    """
+
+    def __init__(
+            self,
+            conv_layer: Type[nn.Module] = nn.Conv2d,
+            num_features: int = 64,
+            kernel_size: int = 3,
+            bias: bool = True,
+            batch_norm: bool = False,
+            activation: Callable = lambda: nn.ReLU(True),
+            res_scale: float = 1
+    ):
+        super().__init__()
+        layers = []
+        for i in range(2):
+            layers.append(conv_layer(num_features, num_features, kernel_size, padding=kernel_size // 2, bias=bias))
+            if batch_norm:
+                layers.append(nn.BatchNorm2d(num_features))
+            if i == 0:  # Add activation only after the first convolution layer
+                layers.append(activation())
+
+        self.body = nn.Sequential(*layers)
+        self.res_scale = res_scale
+
+    def forward(self, x):
+        res = self.body(x) * self.res_scale
+        res += x
+        return res
